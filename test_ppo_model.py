@@ -154,18 +154,10 @@ def get_mean_std_spread(i, year):
     return mean_spread, std_spread
 
 
-def test_year(year, model_param, beta, check_points, U=1.5, fee=0.05, SL=50):
-    # model = "saves/r4_2y_U{}_Fee{}/{}-01-01_{}-12-31/".format(
-    #     U, fee, year + 1, year + 1
-    # )
-    # model += model_param + "_Beta{}".format(beta)
-    # results_dir = "results_r4_2y_all/U{}_Fee{}_SL{}/{}_{}_Beta{}/".format(
-    #     U, fee, SL, year, model_param, beta
-    # )
-
+def test_year(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     model = "saves/{}-".format(year)
-    model += model_param  # + "_Beta{}".format(beta)
-    results_dir = "results/{}_{}_Beta{}/".format(year, model_param, beta)
+    model += model_param
+    results_dir = "results/{}_{}/".format(year, model_param)
 
     # in-sample
     pairs = pd.read_csv("pairs/{}-01-01_{}-12-31.csv".format(year, year), index_col=0)
@@ -173,8 +165,8 @@ def test_year(year, model_param, beta, check_points, U=1.5, fee=0.05, SL=50):
     trade_start = "{}-01-01".format(year + 1)
     trade_end = "{}-12-31".format(year + 1)
     print(
-        "In-sample {} to {} beta-{} cp{}-{}".format(
-            trade_start, trade_end, beta, check_points[0], check_points[-1]
+        "In-sample {} to {}  cp{}-{}".format(
+            trade_start, trade_end, check_points[0], check_points[-1]
         )
     )
     for i in range(len(pairs)):
@@ -239,13 +231,10 @@ def test_year(year, model_param, beta, check_points, U=1.5, fee=0.05, SL=50):
     print("----- done -----")
 
 
-def read_results_in(year, model_param, beta, check_points, U=1.5, fee=0.05, SL=50):
+def read_results_in(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     all_returns = []
     all_trades = []
-    # results_dir = "results_r4_2y_all/U{}_Fee{}_SL{}/{}_{}_Beta{}/".format(
-    #     U, fee, SL, year, model_param, beta
-    # )
-    results_dir = "results/{}_{}_Beta{}/".format(year, model_param, beta)
+    results_dir = "results/{}_{}/".format(year, model_param)
     pairs = pd.read_csv("pairs/{}-01-01_{}-12-31.csv".format(year, year), index_col=0)
     pairs = pairs[["Stock1", "Stock2"]].values  # [:num_pairs]
     trade_start = "{}-01-01".format(year + 1)
@@ -275,13 +264,10 @@ def read_results_in(year, model_param, beta, check_points, U=1.5, fee=0.05, SL=5
     return all_returns, all_trades
 
 
-def read_results_out(year, model_param, beta, check_points, U=1.5, fee=0.05, SL=50):
+def read_results_out(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     all_returns = []
     all_trades = []
-    # results_dir = "results_r4_2y_all/U{}_Fee{}_SL{}/{}_{}_Beta{}/".format(
-    #     U, fee, SL, year, model_param, beta
-    # )
-    results_dir = "results/{}_{}_Beta{}/".format(year, model_param, beta)
+    results_dir = "results/{}_{}/".format(year, model_param)
     pairs = pd.read_csv(
         "pairs/{}-01-01_{}-12-31.csv".format(year + 1, year + 1), index_col=0
     )
@@ -313,20 +299,17 @@ def read_results_out(year, model_param, beta, check_points, U=1.5, fee=0.05, SL=
     return all_returns, all_trades
 
 
-def plot_year_beta(year, model_param, beta, check_points, SL=50):
+def plot_year_beta(year, model_param, check_points, SL=50):
     # U:1.5 fee:0.05 SL:50
     # fig_temp_dir = "results_r4_2y_all/U1.5_Fee0.05_SL{}/figs_temp/".format(SL)
     fig_temp_dir = "results_figs/"
     os.makedirs(fig_temp_dir, exist_ok=True)
-    in_returns, in_trades = read_results_in(
-        year, model_param, beta, check_points, SL=SL
-    )
-    out_returns, out_trades = read_results_out(
-        year, model_param, beta, check_points, SL=SL
-    )
+    in_returns, in_trades = read_results_in(year, model_param, check_points, SL=SL)
+    out_returns, out_trades = read_results_out(year, model_param, check_points, SL=SL)
 
     plt.figure(figsize=(14, 8))
     # sl = "None" if SL > 20 else SL
+    beta = model_param.split("-")[-1][1:]
     subtitle_str = "Performance of RL-{} during {} (training) - {} (testing)".format(
         beta, year + 1, year + 2
     )
@@ -334,40 +317,36 @@ def plot_year_beta(year, model_param, beta, check_points, SL=50):
         subtitle_str += f"\nStop-loss: {SL}"
     plt.suptitle(subtitle_str, fontsize=14)
     plt.subplot(221)
-    plt.plot(check_points, in_returns.mean(axis=0))
+    plt.plot(check_points / 10, in_returns.mean(axis=0))
     plt.axhline(0, ls="--", c="grey")
     plt.title("Average Cumulative Return (Training)")
     plt.ylabel("Return (%)")
 
     plt.subplot(222)
-    plt.plot(check_points, out_returns.mean(axis=0))
+    plt.plot(check_points / 10, out_returns.mean(axis=0))
     plt.axhline(0, ls="--", c="grey")
     plt.title("Average Cumulative Return (Testing)")
     plt.ylabel("Return (%)")
 
     plt.subplot(223)
-    plt.plot(check_points, in_trades.mean(axis=0))
+    plt.plot(check_points / 10, in_trades.mean(axis=0))
     plt.title("Average Trades (Training)")
     plt.ylabel("Trades")
     plt.xlabel("Training Steps " + r"$(\times 10^6$)")
 
     plt.subplot(224)
-    plt.plot(check_points, out_trades.mean(axis=0))
+    plt.plot(check_points / 10, out_trades.mean(axis=0))
     plt.title("Average Trades (Testing)")
     plt.ylabel("Trades")
     plt.xlabel("Training Steps " + r"$(\times 10^6$)")
-    plt.savefig(
-        fig_temp_dir + "{}_{}_beta{}.jpg".format(year, model_param, beta), dpi=300
-    )
+    plt.savefig(fig_temp_dir + "{}_{}.jpg".format(year, model_param), dpi=300)
     # plt.show()
 
 
-# def old_get_mean_std_spread(pair,year):
-#     ric1, ric2 = pair
-#     df,_ = read_data([ric1,ric2],'30min')
-#     formation_start = '{}-01-01'.format(year); formation_end = '{}-12-31'.format(year)
-#     trade_start = '{}-01-01'.format(year+1); trade_end = '{}-12-31'.format(year+1)
-#     df_f = df[formation_start:formation_end]
-#     df_t = df[trade_start:trade_end]
-#     _,_,mean_spread,std_spread,_ = calculate_spread(df_f,df_t)
-#     return mean_spread, std_spread
+if __name__ == "__main__":
+    check_points = np.arange(0, 201, 5)
+    model_param = '2009-L5e-05-T4096-B64-N8-E0.005-b0.02'
+    year = int(model_param[:4])
+    model_param = model_param[5:]
+    test_year(year,model_param,check_points)
+    plot_year_beta(year,model_param,check_points)

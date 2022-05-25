@@ -7,7 +7,7 @@ import data
 
 DEFAULT_BARS_COUNT = 20  # 10
 DEFAULT_COMMISSION_PERC = 0.05
-
+HOLDING_COST = 0.01
 
 class Actions(enum.Enum):
     Short = 0
@@ -27,7 +27,7 @@ class SpreadEnv(gym.Env):
         lower=-1,
         bars_count=DEFAULT_BARS_COUNT,
         commission=DEFAULT_COMMISSION_PERC,
-        reset_on_close=True,
+        reset_on_close=False,
         state_1d=False,
         random_ofs_on_reset=True,
         reward_on_close=False,
@@ -145,11 +145,11 @@ class State:
 
     @property
     def shape(self):
-        # [h, l, c] * bars + position_flag + rel_profit (since open) + hold_period
+        # [h, l, c] * bars + position_flag + rel_profit (since open)
         if self.volumes:
-            return (2 * self.bars_count + 1 + 1 + 1,)
+            return (2 * self.bars_count + 1 + 1,)
         else:
-            return (self.bars_count + 1 + 1 + 1,)
+            return (self.bars_count + 1 + 1,)
 
     def encode(self):
         """
@@ -171,7 +171,6 @@ class State:
         else:
             res[shift] = (self._cur_close() - self.open_price) * self.position
             self.time_since_open += 1
-        res[shift+1] = self.time_since_open
         return res
 
     def _cur_close(self):
@@ -219,8 +218,6 @@ class State:
         if self.position == 0 and action != Actions.Neutral:  # Open a position
             self.open_price = close
             reward -= self.commission_perc
-            # if self.beta > 0:
-            #    reward -= self.beta*abs(action.value - suggested_action.value)
             if action == Actions.Long:
                 self.position = 1
             elif action == Actions.Short:
@@ -228,8 +225,6 @@ class State:
         elif (self.position == 1) and (
             action != Actions.Long
         ):  # Close the long position
-            # if self.beta > 0:
-            #    reward -= self.beta*abs(action.value - suggested_action.value)
             reward -= self.commission_perc
             done |= self.reset_on_close
             self.position = 0
@@ -239,14 +234,15 @@ class State:
         elif (self.position == -1) and (
             action != Actions.Short
         ):  # Close the short position
-            # if self.beta > 0:
-            #    reward -= self.beta*abs(action.value - suggested_action.value)
             reward -= self.commission_perc
             done |= self.reset_on_close
             self.position = 0
             self.open_price = 0.0
             if self.reward_on_close:
                 reward += (self.open_price - close) * self.reward_scale
+        elif self.position != 0:
+            # Keep the position
+            reward -= HOLDING_COST
 
         self._offset += 1
         prev_close = close
