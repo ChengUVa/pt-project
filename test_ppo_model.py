@@ -345,7 +345,7 @@ def plot_year_beta(year, model_param, check_points, SL=50):
 
 if __name__ == "__main__":
     check_points = np.arange(0, 201, 5)
-    model_param = "2009-L1e-05-T2048-B64-N8-E0.01-b1.0"
+    model_param = "2009-L5e-05-T1024-B64-N8-E0.002-b0.1"
     year = int(model_param[:4])
     model_param = model_param[5:]
     stop_loss = 3
