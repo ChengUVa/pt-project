@@ -8,6 +8,7 @@ pairs_spread_info/
 saves/
 results/
 results_figs/
+working_notes/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

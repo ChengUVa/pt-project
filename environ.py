@@ -6,8 +6,8 @@ import numpy as np
 import data
 
 DEFAULT_BARS_COUNT = 20  # 10
-DEFAULT_COMMISSION_PERC = 0.05
-HOLDING_COST = 0.01
+DEFAULT_COMMISSION = 0.005
+
 
 class Actions(enum.Enum):
     Short = 0
@@ -15,7 +15,6 @@ class Actions(enum.Enum):
     Long = 2
 
 
-# r4
 class SpreadEnv(gym.Env):
     metadata = {"render.modes": ["human"]}
 
@@ -26,39 +25,26 @@ class SpreadEnv(gym.Env):
         upper=1,
         lower=-1,
         bars_count=DEFAULT_BARS_COUNT,
-        commission=DEFAULT_COMMISSION_PERC,
+        commission=DEFAULT_COMMISSION,
+        holding_cost=0.0,
         reset_on_close=False,
-        state_1d=False,
         random_ofs_on_reset=True,
         reward_on_close=False,
         volumes=False,
-        reward_scale=100,
     ):
         assert isinstance(prices, dict)
         self._prices = prices
-        if state_1d:
-            self._state = State1D(
-                beta,
-                upper,
-                lower,
-                bars_count,
-                commission,
-                reset_on_close,
-                reward_on_close=reward_on_close,
-                volumes=volumes,
-            )
-        else:
-            self._state = State(
-                beta,
-                upper,
-                lower,
-                bars_count,
-                commission,
-                reset_on_close,
-                reward_on_close=reward_on_close,
-                volumes=volumes,
-                reward_scale=reward_scale,
-            )
+        self._state = State(
+            beta,
+            upper,
+            lower,
+            bars_count,
+            commission,
+            holding_cost=holding_cost,
+            reset_on_close=reset_on_close,
+            reward_on_close=reward_on_close,
+            volumes=volumes,
+        )
         self.action_space = gym.spaces.Discrete(n=len(Actions))
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=self._state.shape, dtype=np.float32
@@ -111,27 +97,27 @@ class State:
         upper,
         lower,
         bars_count,
-        commission_perc,
-        reset_on_close,
+        commission,
+        holding_cost=0.0,
+        reset_on_close=False,
         reward_on_close=False,
         volumes=True,
-        reward_scale=100,
     ):
         assert isinstance(bars_count, int)
         assert bars_count > 0
-        assert isinstance(commission_perc, float)
-        assert commission_perc >= 0.0
+        assert isinstance(commission, float)
+        assert commission >= 0.0
         assert isinstance(reset_on_close, bool)
         assert isinstance(reward_on_close, bool)
         self.bars_count = bars_count
-        self.commission_perc = commission_perc
+        self.commission = commission
+        self.holding_cost = holding_cost
         self.reset_on_close = reset_on_close
         self.reward_on_close = reward_on_close
         self.volumes = volumes
         self.beta = beta
         self.upper = upper
         self.lower = lower
-        self.reward_scale = reward_scale
 
     def reset(self, prices, offset):
         # assert isinstance(prices, Spreads)
@@ -145,11 +131,11 @@ class State:
 
     @property
     def shape(self):
-        # [h, l, c] * bars + position_flag + rel_profit (since open)
+        # [h, l, c] * bars + position_flag + rel_profit (since open) + holding period
         if self.volumes:
             return (2 * self.bars_count + 1 + 1,)
         else:
-            return (self.bars_count + 1 + 1,)
+            return (self.bars_count + 1 + 1 ,)
 
     def encode(self):
         """
@@ -171,6 +157,7 @@ class State:
         else:
             res[shift] = (self._cur_close() - self.open_price) * self.position
             self.time_since_open += 1
+        # res[shift+1] = self.time_since_open * 0.001
         return res
 
     def _cur_close(self):
@@ -194,30 +181,20 @@ class State:
         done = False
         close = self._cur_close()
         if self.beta > 0:
-            if self.position == 0:
-                if close < self.lower:
-                    suggested_action = Actions.Long
-                elif close > self.upper:
-                    suggested_action = Actions.Short
-                else:
-                    suggested_action = Actions.Neutral
-            elif self.position == 1:
-                if close < 0:
-                    suggested_action = Actions.Long
-                else:
-                    suggested_action = Actions.Neutral
-            elif self.position == -1:
-                if close > 0:
-                    suggested_action = Actions.Short
-                else:
-                    suggested_action = Actions.Neutral
-
-            if action != suggested_action:
-                reward -= self.beta * abs(action.value - suggested_action.value)
+            # only apply reward shaping to entry/exit point
+            if self.position == 0 and action != Actions.Neutral:
+                if close > self.lower and close < self.upper:  # open a position
+                    reward -= self.beta
+            elif self.position == 1 and action != Actions.Long:
+                if close < 0:  # close a long position
+                    reward -= self.beta
+            elif self.position == -1 and action != Actions.Short:
+                if close > 0:  # close a short position
+                    reward -= self.beta
 
         if self.position == 0 and action != Actions.Neutral:  # Open a position
             self.open_price = close
-            reward -= self.commission_perc
+            reward -= self.commission
             if action == Actions.Long:
                 self.position = 1
             elif action == Actions.Short:
@@ -225,24 +202,24 @@ class State:
         elif (self.position == 1) and (
             action != Actions.Long
         ):  # Close the long position
-            reward -= self.commission_perc
+            reward -= self.commission
             done |= self.reset_on_close
             self.position = 0
             self.open_price = 0.0
             if self.reward_on_close:
-                reward += (close - self.open_price) * self.reward_scale
+                reward += close - self.open_price
         elif (self.position == -1) and (
             action != Actions.Short
         ):  # Close the short position
-            reward -= self.commission_perc
+            reward -= self.commission
             done |= self.reset_on_close
             self.position = 0
             self.open_price = 0.0
             if self.reward_on_close:
-                reward += (self.open_price - close) * self.reward_scale
+                reward += self.open_price - close
         elif self.position != 0:
             # Keep the position
-            reward -= HOLDING_COST
+            reward -= self.holding_cost
 
         self._offset += 1
         prev_close = close
@@ -250,35 +227,7 @@ class State:
         done |= self._offset >= self._prices.spread.shape[0] - 1
 
         if (self.position != 0) and not self.reward_on_close:
-            reward += self.reward_scale * (close - prev_close) * self.position
+            reward += (close - prev_close) * self.position
 
         return reward, done
 
-
-class State1D(State):
-    """
-    State with shape suitable for 1D convolution
-    """
-
-    @property
-    def shape(self):
-        if self.volumes:
-            return (6, self.bars_count)
-        else:
-            return (5, self.bars_count)
-
-    def encode(self):
-        res = np.zeros(shape=self.shape, dtype=np.float32)
-        ofs = self.bars_count - 1
-        res[0] = self._prices.high[self._offset - ofs : self._offset + 1]
-        res[1] = self._prices.low[self._offset - ofs : self._offset + 1]
-        res[2] = self._prices.close[self._offset - ofs : self._offset + 1]
-        if self.volumes:
-            res[3] = self._prices.volume[self._offset - ofs : self._offset + 1]
-            dst = 4
-        else:
-            dst = 3
-        if self.have_position:
-            res[dst] = 1.0
-            res[dst + 1] = (self._cur_close() - self.open_price) / self.open_price
-        return res

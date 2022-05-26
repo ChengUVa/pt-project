@@ -26,7 +26,6 @@ def run_model(
     N=20,
     commission=0.1,
 ):
-    args_commission = commission
     env = environ.SpreadEnv(
         spread_data, bars_count=N, reset_on_close=False, random_ofs_on_reset=False
     )
@@ -54,14 +53,17 @@ def run_model(
 
     while True:
         cur_price = env._state._cur_close()
-        if cur_price > stop_loss or cur_price < -stop_loss:
+        if (position == -1 and cur_price > stop_loss) or (
+            position == 1 and cur_price < -stop_loss
+        ):
             done = True
         else:
             step_idx += 1
             obs_v = torch.tensor([obs])
             action_probs = net(obs_v)
             dist = torch.distributions.Categorical(action_probs)
-            action_idx = dist.sample().numpy()[0]
+            # action_idx = dist.sample().numpy()[0] # random
+            action_idx = dist.probs.argmax(dim=1).numpy()[0]  # deterministic
             action = Actions(action_idx)
             actions_name.append(action.name)
 
@@ -111,9 +113,7 @@ def run_model(
     d["CloseSpread"] = np.array(close_prices) * std_spread + mean_spread
     d["Open_Z"] = np.array(open_prices)
     d["Close_Z"] = np.array(close_prices)
-    d["Return(%)"] = (
-        d.CloseSpread - d.OpenSpread
-    ) * d.Position * 100 - 2 * args_commission
+    d["Return(%)"] = (d.CloseSpread - d.OpenSpread) * d.Position * 100 - 2 * commission
     d["CumulativeReturn(%)"] = (np.cumprod((1 + d["Return(%)"] / 100)) - 1) * 100
     d["OpenTime"] = np.array(open_times, dtype=int)
     d["CloseTime"] = np.array(close_times, dtype=int)
@@ -157,7 +157,7 @@ def get_mean_std_spread(i, year):
 def test_year(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     model = "saves/{}-".format(year)
     model += model_param
-    results_dir = "results/{}_{}/".format(year, model_param)
+    results_dir = "results/{}_{}_SL{}/".format(year, model_param, SL)
 
     # in-sample
     pairs = pd.read_csv("pairs/{}-01-01_{}-12-31.csv".format(year, year), index_col=0)
@@ -234,7 +234,7 @@ def test_year(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
 def read_results_in(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     all_returns = []
     all_trades = []
-    results_dir = "results/{}_{}/".format(year, model_param)
+    results_dir = "results/{}_{}_SL{}/".format(year, model_param, SL)
     pairs = pd.read_csv("pairs/{}-01-01_{}-12-31.csv".format(year, year), index_col=0)
     pairs = pairs[["Stock1", "Stock2"]].values  # [:num_pairs]
     trade_start = "{}-01-01".format(year + 1)
@@ -267,7 +267,7 @@ def read_results_in(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
 def read_results_out(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     all_returns = []
     all_trades = []
-    results_dir = "results/{}_{}/".format(year, model_param)
+    results_dir = "results/{}_{}_SL{}/".format(year, model_param, SL)
     pairs = pd.read_csv(
         "pairs/{}-01-01_{}-12-31.csv".format(year + 1, year + 1), index_col=0
     )
@@ -302,7 +302,7 @@ def read_results_out(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
 def plot_year_beta(year, model_param, check_points, SL=50):
     # U:1.5 fee:0.05 SL:50
     # fig_temp_dir = "results_r4_2y_all/U1.5_Fee0.05_SL{}/figs_temp/".format(SL)
-    fig_temp_dir = "results_figs/"
+    fig_temp_dir = "results/"
     os.makedirs(fig_temp_dir, exist_ok=True)
     in_returns, in_trades = read_results_in(year, model_param, check_points, SL=SL)
     out_returns, out_trades = read_results_out(year, model_param, check_points, SL=SL)
@@ -339,14 +339,15 @@ def plot_year_beta(year, model_param, check_points, SL=50):
     plt.title("Average Trades (Testing)")
     plt.ylabel("Trades")
     plt.xlabel("Training Steps " + r"$(\times 10^6$)")
-    plt.savefig(fig_temp_dir + "{}_{}.jpg".format(year, model_param), dpi=300)
+    plt.savefig(fig_temp_dir + "{}_{}_SL{}.jpg".format(year, model_param, SL), dpi=300)
     # plt.show()
 
 
 if __name__ == "__main__":
     check_points = np.arange(0, 201, 5)
-    model_param = '2009-L5e-05-T4096-B64-N8-E0.005-b0.02'
+    model_param = "2009-L1e-05-T2048-B64-N8-E0.01-b1.0"
     year = int(model_param[:4])
     model_param = model_param[5:]
-    test_year(year,model_param,check_points)
-    plot_year_beta(year,model_param,check_points)
+    stop_loss = 3
+    test_year(year,model_param,check_points, SL=stop_loss)
+    plot_year_beta(year, model_param, check_points, SL=stop_loss)
