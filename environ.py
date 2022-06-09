@@ -191,6 +191,28 @@ class State:
             elif self.position == -1 and action != Actions.Short:
                 if close > 0:  # close a short position
                     reward -= self.beta
+        # if self.beta>0:
+        #     if self.position == 0:
+        #         if close < self.lower:
+        #             suggested_action = Actions.Long
+        #         elif close > self.upper:
+        #             suggested_action = Actions.Short
+        #         else:
+        #             suggested_action = Actions.Neutral
+        #     elif self.position == 1:
+        #         if close < 0:
+        #             suggested_action = Actions.Long
+        #         else:
+        #             suggested_action = Actions.Neutral
+        #     elif self.position == -1:
+        #         if close > 0:
+        #             suggested_action = Actions.Short
+        #         else:
+        #             suggested_action = Actions.Neutral
+                    
+        #     if action != suggested_action:
+        #         reward -= self.beta*abs(action.value - suggested_action.value)
+
 
         if self.position == 0 and action != Actions.Neutral:  # Open a position
             self.open_price = close

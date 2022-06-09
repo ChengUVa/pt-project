@@ -30,13 +30,13 @@ GAE_LAMBDA = 0.95
 GAMMA = 0.999
 GPU = False
 U = 1.5
-COMMISION = 0.005
-HOLDING_COST = 0.001
+COMMISION = 0.0005
+HOLDING_COST = 0.0001
 MAX_EPISODE_LENGTH = 1000
 SEED = 42
 
 beta = 0.0
-year = 2009
+year = 2010
 
 class Agent:
     """

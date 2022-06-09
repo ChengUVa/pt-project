@@ -318,13 +318,15 @@ def plot_year_beta(year, model_param, check_points, SL=50):
     plt.suptitle(subtitle_str, fontsize=14)
     plt.subplot(221)
     plt.plot(check_points / 10, in_returns.mean(axis=0))
-    plt.axhline(0, ls="--", c="grey")
+    #plt.axhline(0, ls="--", c="grey")
+    plt.grid(True)
     plt.title("Average Cumulative Return (Training)")
     plt.ylabel("Return (%)")
 
     plt.subplot(222)
     plt.plot(check_points / 10, out_returns.mean(axis=0))
-    plt.axhline(0, ls="--", c="grey")
+    #plt.axhline(0, ls="--", c="grey")
+    plt.grid(True)
     plt.title("Average Cumulative Return (Testing)")
     plt.ylabel("Return (%)")
 
@@ -333,12 +335,14 @@ def plot_year_beta(year, model_param, check_points, SL=50):
     plt.title("Average Trades (Training)")
     plt.ylabel("Trades")
     plt.xlabel("Training Steps " + r"$(\times 10^6$)")
+    plt.grid(True)
 
     plt.subplot(224)
     plt.plot(check_points / 10, out_trades.mean(axis=0))
     plt.title("Average Trades (Testing)")
     plt.ylabel("Trades")
     plt.xlabel("Training Steps " + r"$(\times 10^6$)")
+    plt.grid(True)
     plt.savefig(fig_temp_dir + "{}_{}_SL{}.jpg".format(year, model_param, SL), dpi=300)
     # plt.show()
 
