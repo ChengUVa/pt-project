@@ -17,20 +17,20 @@ import environ
 import data
 
 CHECKPOINT_EVERY_STEP = 100_000
-TRAJECTORY_SIZE = 1024
-BATCH_SIZE = 64
-PPO_EPOCHES = 8
-ENTROPY_BONUS = 0.002
-LR = 0.00005
-LR_RATIO = 5  # crt_lr / act_lr
-MAX_STEPS = 20_000_000
+TRAJECTORY_SIZE = 2048
+BATCH_SIZE = 32
+PPO_EPOCHES = 5
+ENTROPY_BONUS = 0.0002
+LR = 0.00002
+LR_RATIO = 10  # crt_lr / act_lr
+MAX_STEPS = 100_000_000
 
 PPO_EPS = 0.2
 GAE_LAMBDA = 0.95
 GAMMA = 0.999
 GPU = False
 U = 1.5
-COMMISION = 0.0005
+COMMISION = 0.0002
 HOLDING_COST = 0.0001
 MAX_EPISODE_LENGTH = 1000
 SEED = 42
@@ -276,7 +276,8 @@ class PPO:
 
 if __name__ == "__main__":
     save_path = os.path.join(
-        "saves", f"{year}-L{LR}-T{TRAJECTORY_SIZE}-B{BATCH_SIZE}-N{PPO_EPOCHES}-E{ENTROPY_BONUS}-b{beta}"
+        "saves",
+        f"{year}-C{COMMISION}-H{HOLDING_COST}-L{LR}-T{TRAJECTORY_SIZE}-B{BATCH_SIZE}-N{PPO_EPOCHES}-E{ENTROPY_BONUS}-b{beta}",
     )
     os.makedirs(save_path, exist_ok=True)
 

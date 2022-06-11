@@ -302,7 +302,7 @@ def read_results_out(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
 def plot_year_beta(year, model_param, check_points, SL=50):
     # U:1.5 fee:0.05 SL:50
     # fig_temp_dir = "results_r4_2y_all/U1.5_Fee0.05_SL{}/figs_temp/".format(SL)
-    fig_temp_dir = "results/"
+    fig_temp_dir = "results/figs/"
     os.makedirs(fig_temp_dir, exist_ok=True)
     in_returns, in_trades = read_results_in(year, model_param, check_points, SL=SL)
     out_returns, out_trades = read_results_out(year, model_param, check_points, SL=SL)
@@ -348,8 +348,8 @@ def plot_year_beta(year, model_param, check_points, SL=50):
 
 
 if __name__ == "__main__":
-    check_points = np.arange(0, 201, 5)
-    model_param = "2009-L5e-05-T1024-B64-N8-E0.002-b0.1"
+    check_points = np.arange(0, 1001, 5)
+    model_param = "2009-C0.0005-H0.0001-L1e-05-T2048-B32-N5-E0.0-b0.0"
     year = int(model_param[:4])
     model_param = model_param[5:]
     stop_loss = 3
