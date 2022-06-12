@@ -135,7 +135,7 @@ class State:
         if self.volumes:
             return (2 * self.bars_count + 1 + 1,)
         else:
-            return (self.bars_count + 1 + 1 ,)
+            return (self.bars_count + 1 + 1 + 1 ,)
 
     def encode(self):
         """
@@ -157,7 +157,7 @@ class State:
         else:
             res[shift] = (self._cur_close() - self.open_price) * self.position
             self.time_since_open += 1
-        # res[shift+1] = self.time_since_open * 0.001
+        res[shift+1] = self.time_since_open * 0.002
         return res
 
     def _cur_close(self):
