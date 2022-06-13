@@ -157,7 +157,7 @@ class State:
         else:
             res[shift] = (self._cur_close() - self.open_price) * self.position
             self.time_since_open += 1
-        res[shift+1] = self.time_since_open * 0.005
+        res[shift+1] = self.time_since_open * 0.01
         return res
 
     def _cur_close(self):
