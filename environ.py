@@ -7,7 +7,7 @@ import data
 
 DEFAULT_BARS_COUNT = 20  # 10
 DEFAULT_COMMISSION = 0.005
-
+REWARD_SCALE = 10
 
 class Actions(enum.Enum):
     Short = 0
@@ -229,7 +229,7 @@ class State:
             self.open_price = 0.0
             self.time_since_open = 0
             if self.reward_on_close:
-                reward += close - self.open_price
+                reward += (close - self.open_price) * REWARD_SCALE
         elif (self.position == -1) and (
             action != Actions.Short
         ):  # Close the short position
@@ -239,7 +239,7 @@ class State:
             self.open_price = 0.0
             self.time_since_open = 0
             if self.reward_on_close:
-                reward += self.open_price - close
+                reward += (self.open_price - close) * REWARD_SCALE
         elif self.position != 0:
             # Keep the position
             reward -= self.holding_cost
@@ -250,7 +250,7 @@ class State:
         done |= self._offset >= self._prices.spread.shape[0] - 1
 
         if (self.position != 0) and not self.reward_on_close:
-            reward += (close - prev_close) * self.position
+            reward += (close - prev_close) * self.position * REWARD_SCALE
 
         return reward, done
 
