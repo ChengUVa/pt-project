@@ -155,7 +155,7 @@ class State:
             res[shift] = 0.0  # profit is zero if no position is opened
             self.time_since_open = 0.0
         else:
-            res[shift] = (self._cur_close() - self.open_price) * self.position
+            res[shift] = (self._cur_close() - self.open_price) * self.position * 10
             self.time_since_open += 1
         res[shift+1] = self.time_since_open * 0.01
         return res
@@ -228,6 +228,7 @@ class State:
             done |= self.reset_on_close
             self.position = 0
             self.open_price = 0.0
+            self.time_since_open = 0
             if self.reward_on_close:
                 reward += close - self.open_price
         elif (self.position == -1) and (
@@ -237,6 +238,7 @@ class State:
             done |= self.reset_on_close
             self.position = 0
             self.open_price = 0.0
+            self.time_since_open = 0
             if self.reward_on_close:
                 reward += self.open_price - close
         elif self.position != 0:
