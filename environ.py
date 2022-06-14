@@ -153,7 +153,6 @@ class State:
         shift += 1
         if not self.position:
             res[shift] = 0.0  # profit is zero if no position is opened
-            self.time_since_open = 0.0
         else:
             res[shift] = (self._cur_close() - self.open_price) * self.position * 10
             self.time_since_open += 1
