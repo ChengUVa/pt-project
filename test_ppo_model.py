@@ -25,7 +25,7 @@ def run_model(
     stop_loss=4.0,
     N=20,
     commission=0.1,
-    stop_loss_pct=10.0,
+    stop_loss_pct=5.0,
 ):
     env = environ.SpreadEnv(
         spread_data, bars_count=N, reset_on_close=False, random_ofs_on_reset=False
@@ -59,20 +59,17 @@ def run_model(
         # ):
         if cur_price > stop_loss or cur_price < -stop_loss:
             done = True
-        elif position !=0 :
-            paper_return = (cur_price - open_price) * position * std_spread * 100
-            if paper_return < - stop_loss_pct:
-                done = True
         else:
             step_idx += 1
-            obs_v = torch.tensor([obs])
+            obs_v = torch.tensor(np.array(obs))
             action_probs = net(obs_v)
             dist = torch.distributions.Categorical(action_probs)
             # action_idx = dist.sample().numpy()[0] # random
             action_idx = dist.probs.argmax(dim=1).numpy()[0]  # deterministic
             action = Actions(action_idx)
             actions_name.append(action.name)
-
+            obs, reward, done, _ = env.step(action_idx)
+            
             if position == 0 and action == Actions.Long:
                 open_price = env._state._cur_close()
                 open_time = env._state._offset
@@ -99,8 +96,10 @@ def run_model(
                 position = 0
                 close_time = env._state._offset
                 close_times.append(close_time)
-
-            obs, reward, done, _ = env.step(action_idx)
+            elif position !=0 : # keep the position
+                paper_return = (cur_price - open_price) * position * std_spread * 100
+                if paper_return < - stop_loss_pct:
+                    done = True
 
         # rewards.append(reward)
 
@@ -355,7 +354,7 @@ def plot_year_beta(year, model_param, check_points, SL=50):
 
 if __name__ == "__main__":
     check_points = np.arange(0, 1001, 20)
-    model_param = "2010-C0.005-H0.001-L5e-07-T2048-B64-N5-E0.005-b0.0"
+    model_param = "2010-C0.005-H0.001-L5e-06-T2048-B64-N5-E0.001-b0.0"
     year = int(model_param[:4])
     model_param = model_param[5:]
     stop_loss = 50
