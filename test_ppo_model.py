@@ -232,6 +232,7 @@ def test_year(year, model_param, check_points, U=1.5, fee=0.05, SL=50, MD=20):
                 std_spread,
                 stop_loss=SL,
                 commission=fee,
+                stop_loss_pct=MD,
             )
             results.to_csv(csv_dir + "/CP{}.csv".format(cp))
     print("----- done -----")
@@ -311,7 +312,7 @@ def plot_year_beta(year, model_param, check_points, SL=50, MD=20):
     fig_temp_dir = "results/figs/"
     os.makedirs(fig_temp_dir, exist_ok=True)
     in_returns, in_trades = read_results_in(year, model_param, check_points, SL=SL, MD=MD)
-    out_returns, out_trades = read_results_out(year, model_param, check_points, SL=SL, mD=MD)
+    out_returns, out_trades = read_results_out(year, model_param, check_points, SL=SL, MD=MD)
 
     plt.figure(figsize=(14, 8))
     # sl = "None" if SL > 20 else SL
@@ -354,11 +355,11 @@ def plot_year_beta(year, model_param, check_points, SL=50, MD=20):
 
 
 if __name__ == "__main__":
-    check_points = np.arange(0, 1001, 20)
-    model_param = "2009-C0.005-H0.001-L5e-06-T2048-B64-N5-E0.001-b0.0"
+    check_points = np.arange(0, 1001, 100)
+    model_param = "2009-C0.005-H0.001-L5e-06-T2048-B64-N5-E0.001-b0.02"
     year = int(model_param[:4])
     model_param = model_param[5:]
     stop_loss = 50
-    MD = 20
-    test_year(year,model_param,check_points, SL=stop_loss, MD=20)
-    plot_year_beta(year, model_param, check_points, SL=stop_loss, MD=20)
+    MD = 10
+    test_year(year,model_param,check_points, SL=stop_loss, MD=MD)
+    plot_year_beta(year, model_param, check_points, SL=stop_loss, MD=MD)
