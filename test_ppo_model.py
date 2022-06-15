@@ -25,6 +25,7 @@ def run_model(
     stop_loss=4.0,
     N=20,
     commission=0.1,
+    stop_loss_pct=10.0,
 ):
     env = environ.SpreadEnv(
         spread_data, bars_count=N, reset_on_close=False, random_ofs_on_reset=False
@@ -58,6 +59,10 @@ def run_model(
         # ):
         if cur_price > stop_loss or cur_price < -stop_loss:
             done = True
+        elif position !=0 :
+            paper_return = (cur_price - open_price) * position * std_spread * 100
+            if paper_return < - stop_loss_pct:
+                done = True
         else:
             step_idx += 1
             obs_v = torch.tensor([obs])
@@ -349,8 +354,8 @@ def plot_year_beta(year, model_param, check_points, SL=50):
 
 
 if __name__ == "__main__":
-    check_points = np.arange(0, 1001, 10)
-    model_param = "2009-C0.0001-H0.001-L2e-05-T2048-B32-N5-E0.0002-b0.0"
+    check_points = np.arange(0, 1001, 20)
+    model_param = "2010-C0.005-H0.001-L5e-07-T2048-B64-N5-E0.005-b0.0"
     year = int(model_param[:4])
     model_param = model_param[5:]
     stop_loss = 50
