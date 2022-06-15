@@ -25,7 +25,7 @@ def run_model(
     stop_loss=4.0,
     N=20,
     commission=0.1,
-    stop_loss_pct=5.0,
+    stop_loss_pct=20.0,
 ):
     env = environ.SpreadEnv(
         spread_data, bars_count=N, reset_on_close=False, random_ofs_on_reset=False
@@ -159,10 +159,10 @@ def get_mean_std_spread(i, year):
     return mean_spread, std_spread
 
 
-def test_year(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
+def test_year(year, model_param, check_points, U=1.5, fee=0.05, SL=50, MD=20):
     model = "saves/{}-".format(year)
     model += model_param
-    results_dir = "results/{}_{}_SL{}/".format(year, model_param, SL)
+    results_dir = "results/{}_{}_SL{}_MD{}/".format(year, model_param, SL, MD)
 
     # in-sample
     pairs = pd.read_csv("pairs/{}-01-01_{}-12-31.csv".format(year, year), index_col=0)
@@ -193,6 +193,7 @@ def test_year(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
                 std_spread,
                 stop_loss=SL,
                 commission=fee,
+                stop_loss_pct=MD,
             )
             results.to_csv(csv_dir + "/CP{}.csv".format(cp))
         elapsed_time = time.time() - start_time
@@ -236,10 +237,10 @@ def test_year(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     print("----- done -----")
 
 
-def read_results_in(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
+def read_results_in(year, model_param, check_points, U=1.5, fee=0.05, SL=50, MD=20):
     all_returns = []
     all_trades = []
-    results_dir = "results/{}_{}_SL{}/".format(year, model_param, SL)
+    results_dir = "results/{}_{}_SL{}_MD{}/".format(year, model_param, SL,MD)
     pairs = pd.read_csv("pairs/{}-01-01_{}-12-31.csv".format(year, year), index_col=0)
     pairs = pairs[["Stock1", "Stock2"]].values  # [:num_pairs]
     trade_start = "{}-01-01".format(year + 1)
@@ -269,10 +270,10 @@ def read_results_in(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     return all_returns, all_trades
 
 
-def read_results_out(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
+def read_results_out(year, model_param, check_points, U=1.5, fee=0.05, SL=50, MD=20):
     all_returns = []
     all_trades = []
-    results_dir = "results/{}_{}_SL{}/".format(year, model_param, SL)
+    results_dir = "results/{}_{}_SL{}_MD{}/".format(year, model_param, SL, MD)
     pairs = pd.read_csv(
         "pairs/{}-01-01_{}-12-31.csv".format(year + 1, year + 1), index_col=0
     )
@@ -304,13 +305,13 @@ def read_results_out(year, model_param, check_points, U=1.5, fee=0.05, SL=50):
     return all_returns, all_trades
 
 
-def plot_year_beta(year, model_param, check_points, SL=50):
+def plot_year_beta(year, model_param, check_points, SL=50, MD=20):
     # U:1.5 fee:0.05 SL:50
     # fig_temp_dir = "results_r4_2y_all/U1.5_Fee0.05_SL{}/figs_temp/".format(SL)
     fig_temp_dir = "results/figs/"
     os.makedirs(fig_temp_dir, exist_ok=True)
-    in_returns, in_trades = read_results_in(year, model_param, check_points, SL=SL)
-    out_returns, out_trades = read_results_out(year, model_param, check_points, SL=SL)
+    in_returns, in_trades = read_results_in(year, model_param, check_points, SL=SL, MD=MD)
+    out_returns, out_trades = read_results_out(year, model_param, check_points, SL=SL, mD=MD)
 
     plt.figure(figsize=(14, 8))
     # sl = "None" if SL > 20 else SL
@@ -348,15 +349,16 @@ def plot_year_beta(year, model_param, check_points, SL=50):
     plt.ylabel("Trades")
     plt.xlabel("Training Steps " + r"$(\times 10^6$)")
     plt.grid(True)
-    plt.savefig(fig_temp_dir + "{}_{}_SL{}.jpg".format(year, model_param, SL), dpi=300)
+    plt.savefig(fig_temp_dir + "{}_{}_SL{}_MD{}.jpg".format(year, model_param, SL, MD), dpi=300)
     # plt.show()
 
 
 if __name__ == "__main__":
     check_points = np.arange(0, 1001, 20)
-    model_param = "2010-C0.005-H0.001-L5e-06-T2048-B64-N5-E0.001-b0.0"
+    model_param = "2009-C0.005-H0.001-L5e-06-T2048-B64-N5-E0.001-b0.0"
     year = int(model_param[:4])
     model_param = model_param[5:]
     stop_loss = 50
-    test_year(year,model_param,check_points, SL=stop_loss)
-    plot_year_beta(year, model_param, check_points, SL=stop_loss)
+    MD = 20
+    test_year(year,model_param,check_points, SL=stop_loss, MD=20)
+    plot_year_beta(year, model_param, check_points, SL=stop_loss, MD=20)
