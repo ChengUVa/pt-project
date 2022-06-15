@@ -61,7 +61,7 @@ def run_model(
             done = True
         else:
             step_idx += 1
-            obs_v = torch.tensor(np.array(obs))
+            obs_v = torch.tensor([obs])
             action_probs = net(obs_v)
             dist = torch.distributions.Categorical(action_probs)
             # action_idx = dist.sample().numpy()[0] # random
